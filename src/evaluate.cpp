@@ -53,7 +53,9 @@ Value Eval::evaluate(const Eval::NNUE::Network&     network,
     // Blend optimism and eval with nnue complexity
     int nnueComplexity = std::abs(psqt - positional);
     optimism += optimism * nnueComplexity / 476;
-    nnue -= nnue * nnueComplexity / 18236;
+    //when the deep network disagrees strongly with psqt, trust psqt more
+    int damping = std::max(0, 18236 - nnueComplexity);
+    nnue = psqt + (nnue - psqt) * damping / 18236;
 
     int material = 534 * pos.count<PAWN>() + pos.non_pawn_material();
     int v        = (nnue * (77871 + material) + optimism * (7191 + material)) / 77871;
