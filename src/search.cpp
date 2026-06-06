@@ -956,7 +956,22 @@ Value Search::Worker::search(
         assert((ss - 1)->currentMove != Move::null());
 
         // Null move dynamic reduction based on depth
-        Depth R = 7 + depth / 3;
+        // Volatility-adjusted null move reduction
+        // evalDiff measures how much the static evaluation has changed since our last move.
+        // Large changes indicate a dynamic position where null move pruning is safer,
+        // allowing a larger reduction. Small changes (quiet/endgame) get a smaller reduction.
+        int evalDiff = std::abs(ss->staticEval - (ss - 2)->staticEval);
+        // Convert evalDiff to a scaling factor.
+        // Typical evalDiff range: 0 to ~600. Map 0→0.70, 600→1.30.
+        // We use fixed-point: scale = 256 * factor, so 179 = 0.70*256, 332 = 1.30*256.
+        constexpr int MIN_SCALE = 185;  // 0.70
+        constexpr int MAX_SCALE = 331;  // 1.30
+        int scale = std::clamp(MIN_SCALE + evalDiff * (MAX_SCALE - MIN_SCALE) / 581, MIN_SCALE, MAX_SCALE);
+
+        // Base reduction R0 = 7 + depth/3 (original formula)
+        int R0 = 7 + depth / 3;
+        // Apply volatility scale: R = R0 * scale / 256
+        Depth R = Depth(R0 * scale / 256);
         do_null_move(pos, st, ss);
 
         Value nullValue = -search<NonPV>(pos, ss + 1, -beta, -beta + 1, depth - R, false);
