@@ -52,6 +52,13 @@
 
 namespace Stockfish {
 
+
+int NMP_MIN_SCALE = 179;
+int NMP_MAX_SCALE = 332;
+int NMP_DIVISOR   = 600;
+
+TUNE(NMP_MIN_SCALE, NMP_MAX_SCALE, NMP_DIVISOR);
+
 static constexpr std::array<int, 16> lmrDivisor = {3307, 2930, 2874, 2818, 3215, 3225, 3224, 2782,
                                                    2858, 2919, 3088, 3275, 3180, 2868, 3006, 3599};
 
@@ -964,9 +971,10 @@ Value Search::Worker::search(
         // Convert evalDiff to a scaling factor.
         // Typical evalDiff range: 0 to ~600. Map 0→0.70, 600→1.30.
         // We use fixed-point: scale = 256 * factor, so 179 = 0.70*256, 332 = 1.30*256.
-        constexpr int MIN_SCALE = 179;  // 0.70
-        constexpr int MAX_SCALE = 332;  // 1.30
-        int scale = std::clamp(MIN_SCALE + evalDiff * (MAX_SCALE - MIN_SCALE) / 600, MIN_SCALE, MAX_SCALE);
+        int scale = std::clamp(
+    NMP_MIN_SCALE + evalDiff * (NMP_MAX_SCALE - NMP_MIN_SCALE) / NMP_DIVISOR,
+    NMP_MIN_SCALE, NMP_MAX_SCALE
+);
 
         // Base reduction R0 = 7 + depth/3 (original formula)
         int R0 = 7 + depth / 3;
